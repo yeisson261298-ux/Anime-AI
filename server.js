@@ -22,15 +22,14 @@ app.post('/api/anime', upload.single('image'), async (req, res) => {
     const imageBuffer = fs.readFileSync(filePath);
     const base64Image = `data:${req.file.mimetype};base64,${imageBuffer.toString('base64')}`;
 
-    // Modelo: aaronaftab/mirage-ghibli - convierte fotos a estilo anime Ghibli
-    const response = await fetch('https://api.replicate.com/v1/models/aaronaftab/mirage-ghibli/predictions', {
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${REPLICATE_API_KEY}`,
         'Content-Type': 'application/json',
-        'Prefer': 'wait'
       },
       body: JSON.stringify({
+        model: 'aaronaftab/mirage-ghibli',
         input: {
           image: base64Image,
         }
