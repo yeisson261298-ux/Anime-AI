@@ -20,28 +20,41 @@ app.post('/api/anime', upload.single('image'), async (req, res) => {
 
   try {
     const imageBuffer = fs.readFileSync(filePath);
+    const base64Image = imageBuffer.toString('base64');
+    const mimeType = req.file.mimetype;
 
-    // Modelo gratuito de Hugging Face: img2img anime
+    // Usar img2img con modelo anime de Hugging Face
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/Linaqruf/animagine-xl-3.1',
+      'https://api-inference.huggingface.co/models/strangerzonehf/Flux-Anime2Cartoon-LoRA',
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${HF_API_KEY}`,
-          'Content-Type': 'application/octet-stream',
+          'Content-Type': 'application/json',
         },
-        body: imageBuffer
+        body: JSON.stringify({
+          inputs: `anime style portrait of a person, highly detailed, vibrant colors, studio ghibli`,
+          parameters: {
+            image: `data:${mimeType};base64,${base64Image}`,
+            strength: 0.75,
+            num_inference_steps: 20,
+          }
+        })
       }
     );
 
+    if (response.status === 503) {
+      return res.status(503).json({ error: 'El modelo está cargando, intenta en 30 segundos' });
+    }
+
     if (!response.ok) {
       const err = await response.text();
-      throw new Error('Error de Hugging Face: ' + err);
+      throw new Error('Error: ' + err);
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    const imageUrl = `data:image/png;base64,${base64}`;
+    const base64Result = Buffer.from(arrayBuffer).toString('base64');
+    const imageUrl = `data:image/png;base64,${base64Result}`;
 
     res.json({ imageUrl });
 
@@ -53,7 +66,7 @@ app.post('/api/anime', upload.single('image'), async (req, res) => {
   }
 });
 
-app.get('/api/health', (_, res) => res.json({ status: 'ok', model: 'huggingface-animagine' }));
+app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 
 app.listen(PORT, () => {
   console.log(`AnimeAI corriendo en http://localhost:${PORT}`);
