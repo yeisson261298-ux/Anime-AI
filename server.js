@@ -25,7 +25,7 @@ app.post('/api/anime', upload.single('image'), async (req, res) => {
 
     // Usar img2img con modelo anime de Hugging Face
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/strangerzonehf/Flux-Anime2Cartoon-LoRA',
+      'https://router.huggingface.co/hf-inference/models/strangerzonehf/Flux-Anime2Cartoon-LoRA',
       {
         method: 'POST',
         headers: {
