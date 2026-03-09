@@ -22,15 +22,15 @@ app.post('/api/anime', upload.single('image'), async (req, res) => {
     const imageBuffer = fs.readFileSync(filePath);
     const base64Image = `data:${req.file.mimetype};base64,${imageBuffer.toString('base64')}`;
 
-    // Modelo: cjwbw/animeganv2 - convierte fotos reales a anime
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
+    // Modelo: aaronaftab/mirage-ghibli - convierte fotos a estilo anime Ghibli
+    const response = await fetch('https://api.replicate.com/v1/models/aaronaftab/mirage-ghibli/predictions', {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${REPLICATE_API_KEY}`,
+        'Authorization': `Bearer ${REPLICATE_API_KEY}`,
         'Content-Type': 'application/json',
+        'Prefer': 'wait'
       },
       body: JSON.stringify({
-        version: 'fd10e739b50f5b6d7e00eb4c424a86cc5a6a4f0c3b21ecce84d8d9c11f7b2b2',
         input: {
           image: base64Image,
         }
@@ -45,7 +45,7 @@ app.post('/api/anime', upload.single('image'), async (req, res) => {
     while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < 30) {
       await new Promise(r => setTimeout(r, 3000));
       const poll = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-        headers: { 'Authorization': `Token ${REPLICATE_API_KEY}` }
+        headers: { 'Authorization': `Bearer ${REPLICATE_API_KEY}` }
       });
       result = await poll.json();
       attempts++;
