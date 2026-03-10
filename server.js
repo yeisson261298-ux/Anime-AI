@@ -31,12 +31,13 @@ app.post("/api/anime", upload.single("image"), async (req, res) => {
     const imageBuffer = fs.readFileSync(filePath);
     const base64Image = `data:${req.file.mimetype};base64,${imageBuffer.toString("base64")}`;
 
-    // Usar endpoint específico del modelo (soporta llamada sin version hash)
+    // Endpoint específico del modelo (no necesita version ni model en el body)
     const response = await fetch("https://api.replicate.com/v1/models/aaronaftab/mirage-ghibli/predictions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${REPLICATE_API_KEY}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Prefer": "wait"
       },
       body: JSON.stringify({
         input: {
