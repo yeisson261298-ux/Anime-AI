@@ -2,7 +2,6 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const Replicate = require("replicate");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,8 +11,6 @@ const REPLICATE_API_KEY = process.env.REPLICATE_API_KEY;
 if (!REPLICATE_API_KEY) {
   console.error("⚠️ Falta la variable REPLICATE_API_KEY");
 }
-
-const replicate = new Replicate({ auth: REPLICATE_API_KEY });
 
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
@@ -34,22 +31,39 @@ app.post("/api/anime", upload.single("image"), async (req, res) => {
     const imageBuffer = fs.readFileSync(filePath);
     const base64Image = `data:${req.file.mimetype};base64,${imageBuffer.toString("base64")}`;
 
-    // Usar el SDK oficial de Replicate
-    const output = await replicate.run(
-      "aaronaftab/mirage-ghibli",
-      {
+    const response = await fetch("https://api.replicate.com/v1/predictions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REPLICATE_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        version: "166efd159b4138da932522bc5af40d39194033f587d9bdbab1e594119eae3e7f",
         input: {
-          image: base64Image,
-          prompt_strength: 0.8
+          image: base64Image
         }
-      }
-    );
+      })
+    });
 
-    const imageUrl = Array.isArray(output) ? output[0] : output;
+    const prediction = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(prediction));
 
-    if (!imageUrl) throw new Error("No se recibió imagen de la IA");
+    let result = prediction;
+    let attempts = 0;
 
-    res.json({ imageUrl: imageUrl.url ? imageUrl.url() : imageUrl });
+    while (result.status !== "succeeded" && result.status !== "failed" && attempts < 40) {
+      await new Promise(r => setTimeout(r, 2000));
+      const poll = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
+        headers: { Authorization: `Bearer ${REPLICATE_API_KEY}` }
+      });
+      result = await poll.json();
+      attempts++;
+    }
+
+    if (result.status === "failed") throw new Error("La IA falló procesando la imagen");
+
+    const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
+    res.json({ imageUrl });
 
   } catch (err) {
     console.error("❌ ERROR IA:", err.message);
